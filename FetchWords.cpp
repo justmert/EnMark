@@ -6,7 +6,6 @@
 #include <map>
 #include <fstream>
 #include <string>
-#include <iterator>
 #include <vector>
 #include <iostream>
 #include <experimental/filesystem>
@@ -28,18 +27,19 @@ std::string Trim(std::string str)
     return str;
 }
 
-void FetchWords::WriteModule(const std::map<std::string, std::string> &mymap,int order)
+void FetchWords::WriteModule(const std::map<std::string, std::string> &mymap, int order)
 {
-    std::string tempPath = modulePath + "/" + "module"+ std::to_string(order)+ ".txt";
+    std::cout << "writing module " + std::to_string(order) << std::endl;
+    std::string tempPath = modulePath + "/" + "module" + std::to_string(order) + ".txt";
     std::ofstream myfile;
-    myfile.open(tempPath,std::ios::out | std::ios::trunc);
+    myfile.open(tempPath, std::ios::out | std::ios::trunc);
     for (auto &&item : mymap)
     {
         myfile << item.first + "=" << item.second << "\n";
     }
 }
 
-void FetchWords::ParseHtml(std::string &html,int order)
+void FetchWords::ParseHtml(std::string &html, int order)
 {
     std::map<std::string, std::string> map;
     size_t found = 0;
@@ -50,7 +50,7 @@ void FetchWords::ParseHtml(std::string &html,int order)
     {
         int i = 0;
         std::string substr = "";
-        found = html.find("\"text\">",found+1);
+        found = html.find("\"text\">", found + 1);
         if (found == std::string::npos)
             break;
         while (html[found + 7 + i] != '<')
@@ -59,7 +59,6 @@ void FetchWords::ParseHtml(std::string &html,int order)
             i++;
         }
         substr = Trim(substr);
-        std::cout << substr << std::endl;
         if (which)
         {
             first = substr;
@@ -68,16 +67,16 @@ void FetchWords::ParseHtml(std::string &html,int order)
         else
         {
             second = substr;
-            map.insert({first,second});
+            map.insert({first, second});
             which = true;
         }
     }
-    WriteModule(map,order);
+    WriteModule(map, order);
 }
 
 void FetchWords::DownloadHtml(const std::vector<int> &missingvec)
 {
-    for (int i = 0; i < 1; i++)
+    for (int i = 0; i <= 188; i++)
     {
         CURL *curl;
         CURLcode res;
@@ -87,19 +86,20 @@ void FetchWords::DownloadHtml(const std::vector<int> &missingvec)
         if (curl)
         {
             std::string tempurl = url + std::to_string(missingvec[i]) + "/";
-            const char* temp = tempurl.c_str();
+            const char *temp = tempurl.c_str();
             curl_easy_setopt(curl, CURLOPT_URL, temp);
             curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, WriteCallback);
             curl_easy_setopt(curl, CURLOPT_WRITEDATA, &readBuffer);
             res = curl_easy_perform(curl);
             curl_easy_cleanup(curl);
-            ParseHtml(readBuffer,missingvec[i]);
+            ParseHtml(readBuffer, missingvec[i]);
         }
     }
 }
 
 void FetchWords::CheckModules()
 {
+    std::cout << "checking modules" << std::endl;
     std::vector<int> missinvec;
     if (!fs::exists(Path))
     {
@@ -111,13 +111,19 @@ void FetchWords::CheckModules()
     }
     for (int i = 1; i <= 188; i++)
     {
-        if (!fs::exists(modulePath + "/module" + std::to_string(i)))
+        if (!fs::exists(modulePath + "/module" + std::to_string(i) + ".txt"))
         {
             missinvec.push_back(i);
         }
     }
     if (!missinvec.empty())
     {
+        std::cout << "missing module files found" << std::endl;
+        std::cout << "download process will be performed" << std::endl;
         DownloadHtml(missinvec);
+    }
+    else
+    {
+        std::cout << "no missing files found\nproceed to execute program" << std::endl;
     }
 }
